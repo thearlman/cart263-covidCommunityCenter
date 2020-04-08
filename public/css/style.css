@@ -1,0 +1,99 @@
+*{
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+#communityWrapper{
+  width: 100vw;
+  height: 100vh;
+  padding: 10px;
+}
+
+#loginWrapper{
+  z-index: 10000;
+  position: fixed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100vw;
+  height: 100vh;
+  background: white;
+}
+#login{
+  background: black;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width:min-content;
+  height: min-content;
+  padding: 10px;
+  top: 50%;
+  left: 50%;
+  color: white;
+}
+#userNameForm{
+  display: flex;
+  flex-direction: column;
+}
+
+#numUsers{
+  margin-bottom: 10px;
+}
+
+#chatRoomWrapper{
+  display: grid;
+  grid-column: 1fr;
+  grid-template-rows: 5fr 1fr;
+  max-width: 40vw;
+  min-width: 400px;
+  height: 40vh;
+  border: solid 1px red;
+  padding: 10px;
+  background: black;
+}
+#messages{
+  border: solid 1px blue;
+  overflow-y: auto;
+  background: white;
+  margin-bottom: 10px;
+  word-wrap: break-word;
+  padding: 10px;
+}
+
+#userMessage{
+  resize: none;
+  width: 100%;
+  padding: 2px;
+  word-wrap: break-word;
+  margin-bottom: 10px;
+}
+
+#sendMessage{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.userName{
+  margin-top: 5px;
+}
+.avatar{
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+}
+
+.avatar img{
+  width:5vh;
+  height: 5vh;
+}
+
+#whiteboard {
+  border: 1px solid black;
+  width: 560px;
+  height: 360px;
+  cursor: url(../cursor.png), auto;
+}

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <link rel="stylesheet" href="css/style.css">
+   <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="js/client.js" charset="utf-8"></script>
+  <title>Covid Community Center</title>
+</head>
+<body>
+  <div id="communityWrapper">
+
+    <div id="loginWrapper">
+      <div id="login">
+        <form class="" id="userNameForm">
+          <label for="userName">Enter a user name</label>
+          <input type="text" id="userName" name="userName">
+          <input type="submit" name="submit" value="Submit">
+        </form>
+      </div>
+    </div>
+
+    <div id="numUsers"></div>
+    <div id="chatRoomWrapper">
+      <div id="messages"></div>
+      <form id = sendMessage>
+        <textArea type="text" id = "userMessage" name="userMessage"></textarea>
+        <input type="submit" name="submit" value="Send">
+      </form>
+    </div>
+
+    <div id="whiteboardWrapper">
+      <p>draw in the square below!</p>
+      <canvas id="whiteboard" width="560" height="360"></canvas>
+    </div>
+
+
+  </div>
+
+</body>
+</html>
