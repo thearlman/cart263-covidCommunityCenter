@@ -1,8 +1,10 @@
 let express = require('express');
 let fs = require('fs')
 const APP = express();
-const PORT = 6969;
+const PORT = process.env.PORT || 6002;
 let canvasData = `data:image/png;base64,${base64Encode('canvas.png')}`
+
+let systemAdminId;
 
 let httpServer = require('http').createServer(APP);
 let static = require('node-static');
@@ -29,6 +31,7 @@ io.on("connect", function(socket) {
   console.log(users);
   socket.on("newUser", function(message) {
     if (message.userName === "$pwdHas#*10") {
+      systemAdminId = socket.id;
       users[socket.id] = {
         userName: "System Admin",
         userColor: "rgb(255, 0, 0)"
@@ -55,11 +58,25 @@ io.on("connect", function(socket) {
   })
 
   socket.on("newChatMessage", function(message) {
-    io.emit("newChatMessage", {
-      color: users[socket.id].userColor,
-      message: `${users[socket.id].userName}: ${message}`
-    });
-    socket.broadcast.emit('alert', "messageSound");
+    if (socket.id === systemAdminId) {
+      switch (message) {
+        case "server shutdown":
+          shutdownServer();
+          break;
+        default:
+          io.emit("newChatMessage", {
+            color: users[socket.id].userColor,
+            message: `${users[socket.id].userName}: ${message}`
+          });
+          socket.broadcast.emit('alert', "messageSound");
+      }
+    } else {
+      io.emit("newChatMessage", {
+        color: users[socket.id].userColor,
+        message: `${users[socket.id].userName}: ${message}`
+      });
+      socket.broadcast.emit('alert', "messageSound");
+    }
   })
 
 
@@ -115,6 +132,7 @@ function shutdownServer() {
       message: `System Administrator: the server will be shutting down in 30 seconds for a maintenance period`
     })
     setTimeout(() => {
+      io.emit("maintenance", "");
       process.exit();
     }, 5000)
   })

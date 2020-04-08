@@ -35,7 +35,7 @@ $(document).ready(() => {
 
   let x = 0;
   let y = 0;
-
+  let wrapper = document.getElementById("communityWrapper");
   whiteboard = document.getElementById('whiteboard');
   context = whiteboard.getContext('2d');
 
@@ -58,6 +58,7 @@ $(document).ready(() => {
     console.log(message);
   })
 
+  let interact = false;
   clientSocket.on("newChatMessage", function(message) {
     date = new Date();
     day = date.getDate();
@@ -71,9 +72,26 @@ $(document).ready(() => {
     $("#messages").animate({
       scrollTop: 1000000000000000000000
     }, 50);
-    // updateChatlog();
+    // document.title = "hello";
+    // tabFlash();
   })
 
+  function tabFlash(){
+    if (interact === false){
+      $(document).one(function(){
+        let blink = false;
+        let messageNotification = setInterval(function (){
+          if (blink === false){
+            document.title = "New Message!"
+            blink = false;
+          } else if (blink === false){
+            document.title = "Covid Community Center";
+            blink = true;
+          }
+        }, 500)
+      })
+    }
+  }
 
   clientSocket.on("yourId", function(user) {
     myId = user.id;
@@ -84,7 +102,7 @@ $(document).ready(() => {
       <img src="corona.jpg" alt="avatar"/>
       <p class = "userName">${user.userName}</p>
       </div>`);
-    $("#communityWrapper").on('mousemove', function() {
+    wrapper.addEventListener('mousemove', function() {
       $(`#${user.id}`).css({
         top: event.pageY + 10,
         left: event.pageX + 10
@@ -97,7 +115,6 @@ $(document).ready(() => {
   })
 
   clientSocket.on("mouseMoved", function(mouseInfo) {
-    console.log("hello");
     $(`#${mouseInfo.client}`).css({
       top: mouseInfo.mousePosition.y + 10,
       left: mouseInfo.mousePosition.x + 10
@@ -130,6 +147,11 @@ $(document).ready(() => {
 
 
 
+  clientSocket.on("maintenance", function(){
+    $("#communityWrapper").empty();
+
+    $("#communityWrapper").append(`<h1>SERVER WENT DOWN FOR MAINTINENANCE AT </h1>`);
+  })
 
   clientSocket.on("removeAvatar", function(avatarId) {
     $(`#${avatarId}`).empty();
@@ -140,6 +162,12 @@ $(document).ready(() => {
   clientSocket.on("alert", function(soundType) {
     soundLibrary[soundType]();
   })
+
+  // $("#userMessage").one("input", function(e){
+  //   // if (e.val() > 0){
+  //   //   console.log("hanged!");
+  //   // }
+  // })
 
   $("#sendMessage").submit(function() {
     sendMessage();
@@ -258,7 +286,9 @@ function sendMessage() {
   }
 }
 
+function getDate(){
 
+}
 
 function updateChatlog() {
   $.ajax({
