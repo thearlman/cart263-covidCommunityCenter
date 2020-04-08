@@ -1,7 +1,7 @@
 let express = require('express');
 let fs = require('fs')
 const APP = express();
-const PORT = 6902;
+const PORT = 6969;
 let canvasData;
 
 let httpServer = require('http').createServer(APP);
@@ -23,54 +23,73 @@ let io = require('socket.io')(httpServer);
 
 let users = {};
 
-io.on("connect", function(socket){
+io.on("connect", function(socket) {
   socket.emit("handshake", "hello from server");
   console.log("client connected from ip: " + socket.request.connection.remoteAddress);
   console.log(users);
-  socket.on("newUser", function(message){
+  socket.on("newUser", function(message) {
     users[socket.id] = {
       userName: message.userName,
-      // userColor: message.userColor
+      userColor: message.userColor
     };
     socket.emit("yourId", {
       id: socket.id,
       userName: message.userName
     });
-    socket.on("gotMyId", function(){
+    socket.on("gotMyId", function() {
       io.emit("userUpdate", users)
-      io.emit("newChatMessage", `${message.userName} has joined the room!`);
+      io.emit("newChatMessage", {
+        color: users[socket.id].userColor,
+        message: `${message.userName} has joined the room!`
+      });
       socket.broadcast.emit('alert', "newUserSound");
       socket.emit("updateCanvas", canvasData);
     })
   })
 
-  socket.on("newChatMessage", function(message){
-    io.emit("newChatMessage", `${users[socket.id].userName}: ${message}`);
+  socket.on("newChatMessage", function(message) {
+    io.emit("newChatMessage", {
+      color: users[socket.id].userColor,
+      message: `${users[socket.id].userName}: ${message}`
+    });
     socket.broadcast.emit('alert', "messageSound");
   })
 
 
-  socket.on("mouseMoved", function(mousePos){
+
+  socket.on("mouseMoved", function(mousePos) {
     io.emit("mouseMoved", {
       client: socket.id,
       mousePosition: mousePos
     });
   })
 
-  socket.on("drawing", function(coords){
+  socket.on("drawing", function(coords) {
     socket.broadcast.emit("drawing", coords);
   })
 
-  socket.on("saveCanvas", function(data){
+  socket.on("saveCanvas", function(data) {
     canvasData = data;
   })
 
-  socket.on('disconnect', function(){
+  socket.on("eraseDrawing", function() {
+    socket.broadcast.emit("drawingErased", "haha");
+    socket.emit("newChatMessage", {
+      color: users[socket.id].userColor,
+      message: `${users[socket.id].userName} ERASED the drawing!`
+    });
+    canvasData = "";
+  })
+
+  socket.on('disconnect', function() {
     console.log("client disconnected");
-    if (users[socket.id] === undefined){
+    if (users[socket.id] === undefined) {
       return;
     } else {
-      io.emit("newChatMessage", `${users[socket.id].userName} has left the room :-(`);
+      io.emit("newChatMessage", {
+        color: users[socket.id].userColor,
+        message: `${users[socket.id].userName} has left the room...`
+      });
       delete users[socket.id];
       io.emit("removeAvatar", socket.id);
       io.emit("userUpdate", users)

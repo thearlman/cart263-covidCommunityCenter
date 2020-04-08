@@ -16,8 +16,11 @@ messageSound.volume = 0.2;
 let newUserSound = new Audio();
 newUserSound.src = "newUserSound.wav";
 newUserSound.volume = 0.2;
-
 let isDrawing = false;
+
+
+let strokeColor = 'rgb(0, 0, 0)';
+let strokeSize = 10;
 
 let soundLibrary = {
   "messageSound": () => {
@@ -29,24 +32,27 @@ let soundLibrary = {
 }
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 $(document).ready(() => {
- let data;
-  $(document).on("keypress", (e)=>{
-    if (e.key === "1"){
-       data = context.getImageData(0, 0, whiteboard.width, whiteboard.height);
-       console.log(data);
-    }
-    if (e.key === "2"){
-      context.clearRect(0, 0, whiteboard.width, whiteboard.height);
-      context.putImageData(data, 0, 0);
-    }
-  })
-
 
   let x = 0;
   let y = 0;
 
   whiteboard = document.getElementById('whiteboard');
   context = whiteboard.getContext('2d');
+
+  $(".whiteboardColorButton").on('click', function() {
+    strokeColor = $(this).css("background-color");
+    strokeSize = 10;
+    // console.log($(this).css("background-color"));
+  })
+
+  $("#eraserButton").on("click", function() {
+    strokeColor = "rgb(255, 255, 255)"
+    strokeSize = 20;
+  })
+  $("#trashButton").on("click", function() {
+    context.clearRect(0, 0, whiteboard.width, whiteboard.height);
+    clientSocket.emit("eraseDrawing", "haha");
+  })
 
   clientSocket.on("handshake", (message) => {
     console.log(message);
@@ -61,7 +67,7 @@ $(document).ready(() => {
     minutes = date.getMinutes();
     seconds = date.getSeconds();
     $("#messages").append(`
-      <p>(${day}/${month}/${year} - ${hours}:${minutes}:${seconds}) <br/> ${message}</p>`);
+      <p>(${day}/${month}/${year} - ${hours}:${minutes}:${seconds}) <br/> <span style = "color: ${message.color}">${message.message}</span></p>`);
     $("#messages").animate({
       scrollTop: 1000000000000000000000
     }, 50);
@@ -152,7 +158,7 @@ $(document).ready(() => {
 
 
   let mouseOffsetX = 0;
-  let mouseOffsetY = 20;
+  let mouseOffsetY = 0;
   const whiteboardBound = whiteboard.getBoundingClientRect();
   // Add the event listeners for mousedown, mousemove, and mouseup
   whiteboard.addEventListener('mousedown', e => {
@@ -176,18 +182,17 @@ $(document).ready(() => {
       y = 0;
       isDrawing = false;
       let data = whiteboard.toDataURL();
-      console.log(data);
       clientSocket.emit("saveCanvas", data);
     }
   });
 
-  clientSocket.on("updateCanvas", function(canvasData){
-    if (canvasData === null){
-      console.log("undefined");
+  clientSocket.on("updateCanvas", function(canvasData) {
+    if (canvasData === null) {
+      console.log("No picture Saved!");
       return;
     } else {
       let currentCanvas = new Image();
-      currentCanvas.onload = function(){
+      currentCanvas.onload = function() {
         context.clearRect(0, 0, whiteboard.width, whiteboard.height);
         context.drawImage(currentCanvas, 0, 0);
       }
@@ -195,29 +200,40 @@ $(document).ready(() => {
     }
   })
 
-  clientSocket.on("drawing", function(coords){
-    drawLine(context, coords.x1, coords.y1, coords.x2, coords.y2, false);
+  clientSocket.on("drawing", function(coords) {
+    drawLine(context, coords.x1, coords.y1, coords.x2, coords.y2, false, coords.remoteStrokeColor, coords.remoteStrokeSize);
+  })
+
+  clientSocket.on("drawingErased", function(){
+    context.clearRect(0, 0, whiteboard.width, whiteboard.height);
   })
 
   // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 })
 
-function drawLine(context, x1, y1, x2, y2, emit) {
+function drawLine(context, x1, y1, x2, y2, emit, remoteStrokeColor, remoteStrokeSize) {
   context.beginPath();
-  context.strokeStyle = 'black';
-  context.lineWidth = 1;
+  if (!emit) {
+    context.strokeStyle = remoteStrokeColor;
+    context.strokeSize = remoteStrokeSize;
+  } else {
+    context.strokeStyle = strokeColor;
+    context.lineWidth = strokeSize;
+  }
   context.moveTo(x1, y1);
   context.lineTo(x2, y2);
   context.stroke();
   context.closePath();
-  if (!emit){
+  if (!emit) {
     return
   } else {
     clientSocket.emit("drawing", {
       x1: x1,
       y1: y1,
       x2: x2,
-      y2: y2
+      y2: y2,
+      remoteStrokeColor: strokeColor,
+      remoteStrokeSize: strokeSize
     })
   }
 }
