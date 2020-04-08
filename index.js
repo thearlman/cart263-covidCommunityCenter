@@ -1,7 +1,7 @@
 let express = require('express');
 let fs = require('fs')
 const APP = express();
-const PORT = process.env.PORT || 6002;
+const PORT = process.env.PORT;
 let canvasData = `data:image/png;base64,${base64Encode('canvas.png')}`
 
 let systemAdminId;
