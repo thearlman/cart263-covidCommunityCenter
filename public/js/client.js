@@ -85,10 +85,22 @@ $(document).ready(() => {
       <p class = "userName">${user.userName}</p>
       </div>`);
     $("#communityWrapper").on('mousemove', function() {
+      $(`#${user.id}`).css({
+        top: event.pageY + 10,
+        left: event.pageX + 10
+      })
       clientSocket.emit("mouseMoved", {
         x: event.pageX,
         y: event.pageY
       })
+    })
+  })
+
+  clientSocket.on("mouseMoved", function(mouseInfo) {
+    console.log("hello");
+    $(`#${mouseInfo.client}`).css({
+      top: mouseInfo.mousePosition.y + 10,
+      left: mouseInfo.mousePosition.x + 10
     })
   })
 
@@ -117,12 +129,7 @@ $(document).ready(() => {
   })
 
 
-  clientSocket.on("mouseMoved", function(mouseInfo) {
-    $(`#${mouseInfo.client}`).css({
-      top: mouseInfo.mousePosition.y + 10,
-      left: mouseInfo.mousePosition.x + 10
-    })
-  })
+
 
   clientSocket.on("removeAvatar", function(avatarId) {
     $(`#${avatarId}`).empty();
@@ -156,28 +163,25 @@ $(document).ready(() => {
   });
 
 
-
-  let mouseOffsetX = 0;
-  let mouseOffsetY = 0;
   const whiteboardBound = whiteboard.getBoundingClientRect();
   // Add the event listeners for mousedown, mousemove, and mouseup
   whiteboard.addEventListener('mousedown', e => {
-    x = e.clientX - mouseOffsetX - whiteboardBound.left;
-    y = e.clientY - mouseOffsetY - whiteboardBound.top;
+    x = e.clientX - whiteboardBound.left;
+    y = e.clientY - whiteboardBound.top;
     isDrawing = true;
   });
 
   whiteboard.addEventListener('mousemove', e => {
     if (isDrawing === true) {
-      drawLine(context, x, y, e.clientX - mouseOffsetX - whiteboardBound.left, e.clientY - mouseOffsetY - whiteboardBound.top, true);
-      x = e.clientX - mouseOffsetX - whiteboardBound.left;
-      y = e.clientY - mouseOffsetY - whiteboardBound.top;
+      drawLine(context, x, y, e.clientX - whiteboardBound.left, e.clientY - whiteboardBound.top, true);
+      x = e.clientX - whiteboardBound.left;
+      y = e.clientY - whiteboardBound.top;
     }
   });
 
   window.addEventListener('mouseup', e => {
     if (isDrawing === true) {
-      drawLine(context, x, y, e.clientX - mouseOffsetX - whiteboardBound.left, e.clientY - mouseOffsetY - whiteboardBound.top, true);
+      drawLine(context, x, y, e.clientX - whiteboardBound.left, e.clientY - whiteboardBound.top, true);
       x = 0;
       y = 0;
       isDrawing = false;
@@ -204,7 +208,7 @@ $(document).ready(() => {
     drawLine(context, coords.x1, coords.y1, coords.x2, coords.y2, false, coords.remoteStrokeColor, coords.remoteStrokeSize);
   })
 
-  clientSocket.on("drawingErased", function(){
+  clientSocket.on("drawingErased", function() {
     context.clearRect(0, 0, whiteboard.width, whiteboard.height);
   })
 

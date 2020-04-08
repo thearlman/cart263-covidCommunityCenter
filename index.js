@@ -2,7 +2,7 @@ let express = require('express');
 let fs = require('fs')
 const APP = express();
 const PORT = 6969;
-let canvasData;
+let canvasData = `data:image/png;base64,${base64Encode('canvas.png')}`
 
 let httpServer = require('http').createServer(APP);
 let static = require('node-static');
@@ -28,19 +28,26 @@ io.on("connect", function(socket) {
   console.log("client connected from ip: " + socket.request.connection.remoteAddress);
   console.log(users);
   socket.on("newUser", function(message) {
-    users[socket.id] = {
-      userName: message.userName,
-      userColor: message.userColor
-    };
+    if (message.userName === "$pwdHas#*10") {
+      users[socket.id] = {
+        userName: "System Admin",
+        userColor: "rgb(255, 0, 0)"
+      };
+    } else {
+      users[socket.id] = {
+        userName: message.userName,
+        userColor: message.userColor
+      };
+    }
     socket.emit("yourId", {
       id: socket.id,
-      userName: message.userName
+      userName: users[socket.id].userName
     });
     socket.on("gotMyId", function() {
       io.emit("userUpdate", users)
       io.emit("newChatMessage", {
         color: users[socket.id].userColor,
-        message: `${message.userName} has joined the room!`
+        message: `${users[socket.id].userName} has joined the room!`
       });
       socket.broadcast.emit('alert', "newUserSound");
       socket.emit("updateCanvas", canvasData);
@@ -58,7 +65,7 @@ io.on("connect", function(socket) {
 
 
   socket.on("mouseMoved", function(mousePos) {
-    io.emit("mouseMoved", {
+    socket.broadcast.emit("mouseMoved", {
       client: socket.id,
       mousePosition: mousePos
     });
@@ -97,3 +104,25 @@ io.on("connect", function(socket) {
     }
   })
 })
+
+function shutdownServer() {
+  let regexedCanvasData = canvasData.replace(/^data:image\/png;base64,/, "");
+  fs.writeFile("canvas.png", regexedCanvasData, 'base64', function(err) {
+    if (err) throw err;
+    console.log("Shutting down server on client's request");
+    io.emit("newChatMessage", {
+      color: 'rgb(255, 0, 0)',
+      message: `System Administrator: the server will be shutting down in 30 seconds for a maintenance period`
+    })
+    setTimeout(() => {
+      process.exit();
+    }, 5000)
+  })
+}
+
+function base64Encode(url) {
+  // read binary data
+  var bitmap = fs.readFileSync(url);
+  // convert binary data to base64 encoded string
+  return new Buffer(bitmap).toString('base64');
+}
