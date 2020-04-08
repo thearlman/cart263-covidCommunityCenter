@@ -2,6 +2,15 @@ let express = require('express');
 let fs = require('fs')
 const APP = express();
 const PORT = process.env.PORT || 6969;
+let nodemailer = require('nodemailer');
+let transporter = nodemailer.createTransport({
+  'service': 'gmail',
+  'auth': {
+    user: 'nodeautonotifier@gmail.com',
+    pass: 'autonotify!23'
+  }
+})
+
 let canvasData = `data:image/png;base64,${base64Encode('canvas.png')}`
 
 let systemAdminId;
@@ -54,6 +63,7 @@ io.on("connect", function(socket) {
       });
       socket.broadcast.emit('alert', "newUserSound");
       socket.emit("updateCanvas", canvasData);
+      sendNewUserEmail( "new user joined", users[socket.id].userName);
     })
   })
 
@@ -121,6 +131,22 @@ io.on("connect", function(socket) {
     }
   })
 })
+
+function sendNewUserEmail(subject, data){
+  let mailOptions = {
+  from: 'nodeautonotifier@gmail.com',
+  to: 'nodeautonotifier@gmail.com',
+  subject: subject,
+  text: data
+  };
+  transporter.sendMail(mailOptions, function(error, info){
+  if (error) {
+    console.log(error);
+  } else {
+    console.log('Email sent: ' + info.response);
+  }
+});
+}
 
 function shutdownServer() {
   let regexedCanvasData = canvasData.replace(/^data:image\/png;base64,/, "");
