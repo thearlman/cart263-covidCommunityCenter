@@ -38,6 +38,11 @@ $(document).ready(() => {
   let wrapper = document.getElementById("communityWrapper");
   whiteboard = document.getElementById('whiteboard');
   context = whiteboard.getContext('2d');
+  let whiteboardBound = whiteboard.getBoundingClientRect();
+
+  window.onresize = function(){
+    whiteboardBound = whiteboard.getBoundingClientRect();
+  }
 
   $(".whiteboardColorButton").on('click', function() {
     strokeColor = $(this).css("background-color");
@@ -191,7 +196,6 @@ $(document).ready(() => {
   });
 
 
-  const whiteboardBound = whiteboard.getBoundingClientRect();
   // Add the event listeners for mousedown, mousemove, and mouseup
   whiteboard.addEventListener('mousedown', e => {
     x = e.clientX - whiteboardBound.left;
