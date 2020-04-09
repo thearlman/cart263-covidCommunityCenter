@@ -63,7 +63,7 @@ io.on("connect", function(socket) {
       });
       socket.broadcast.emit('alert', "newUserSound");
       socket.emit("updateCanvas", canvasData);
-      sendNewUserEmail( "new user joined", users[socket.id].userName);
+      // sendNewUserEmail( "new user joined", users[socket.id].userName);
     })
   })
 
