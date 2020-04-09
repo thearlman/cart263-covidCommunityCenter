@@ -55,7 +55,7 @@ $(document).ready(() => {
     strokeSize = 20;
   })
   $("#trashButton").on("click", function() {
-    context.clearRect(0, 0, whiteboard.width, whiteboard.height);
+    // context.clearRect(0, 0, whiteboard.width, whiteboard.height);
     clientSocket.emit("eraseDrawing", "haha");
   })
 

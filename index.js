@@ -107,8 +107,8 @@ io.on("connect", function(socket) {
   })
 
   socket.on("eraseDrawing", function() {
-    socket.broadcast.emit("drawingErased", "haha");
-    socket.emit("newChatMessage", {
+    io.emit("drawingErased", "haha");
+    io.emit("newChatMessage", {
       color: users[socket.id].userColor,
       message: `${users[socket.id].userName} ERASED the drawing!`
     });
