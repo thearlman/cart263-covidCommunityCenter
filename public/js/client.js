@@ -43,6 +43,9 @@ $(document).ready(() => {
   window.onresize = function(){
     whiteboardBound = whiteboard.getBoundingClientRect();
   }
+  window.onscroll = function(){
+    whiteboardBound = whiteboard.getBoundingClientRect();
+  }
 
   $(".whiteboardColorButton").on('click', function() {
     strokeColor = $(this).css("background-color");
