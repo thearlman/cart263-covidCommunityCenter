@@ -117,13 +117,13 @@ clientSocket.on("userUpdate", function(users) {
     }
   }
 
-  if (Object.keys(currentUsers).length - 1 >= 2) {
-    $("#messages").append(`<p>there are ${Object.keys(currentUsers).length - 1} other people here right now. say hi</p>`);
-  } else if (Object.keys(currentUsers).length - 1 === 1) {
-    $("#messages").append(`<p>there is 1 other person here right now. say hi</p>`);
-  } else {
-    $("#messages").append(`<p>there are no other people here right now :-(</p>`);
-  }
+  // if (Object.keys(currentUsers).length - 1 >= 2) {
+  //   $("#messages").append(`<p>there are ${Object.keys(currentUsers).length - 1} other people here right now. say hi</p>`);
+  // } else if (Object.keys(currentUsers).length - 1 === 1) {
+  //   $("#messages").append(`<p>there is 1 other person here right now. say hi</p>`);
+  // } else {
+  //   $("#messages").append(`<p>there are no other people here right now :-(</p>`);
+  // }
 })
 
 
