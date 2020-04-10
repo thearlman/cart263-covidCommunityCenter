@@ -20,7 +20,6 @@ let static = require('node-static');
 //tell the express app to use the current filepath (__dirname) + the public directory (for client-side)
 APP.use(express.static(__dirname + '/public'));
 // for the serverside
-APP.use(express.static(__dirname + '/node_modules'));
 
 
 //begin listening for incoming requests from the client
@@ -129,6 +128,9 @@ io.on("connect", function(socket) {
       io.emit("userUpdate", users)
       console.log(users);
     }
+  })
+  socket.on("foundIt", function(message){
+    io.emit("foundIt", message);
   })
 })
 
