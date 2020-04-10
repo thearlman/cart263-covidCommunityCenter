@@ -79,6 +79,9 @@ io.on("connect", function(socket) {
           });
           socket.broadcast.emit('alert', "messageSound");
       }
+    } else if (users[socket.id] == undefined) {
+      socket.emit("connectionLost", "")
+
     } else {
       io.emit("newChatMessage", {
         color: users[socket.id].userColor,
@@ -91,10 +94,14 @@ io.on("connect", function(socket) {
 
 
   socket.on("mouseMoved", function(mousePos) {
-    socket.broadcast.emit("mouseMoved", {
-      client: socket.id,
-      mousePosition: mousePos
-    });
+    if (users[socket.id] == undefined){
+      socket.emit("connectionLost", "")
+    } else{
+      socket.broadcast.emit("mouseMoved", {
+        client: socket.id,
+        mousePosition: mousePos
+      });
+    }
   })
 
   socket.on("drawing", function(coords) {
@@ -129,25 +136,25 @@ io.on("connect", function(socket) {
       console.log(users);
     }
   })
-  socket.on("foundIt", function(message){
+  socket.on("foundIt", function(message) {
     io.emit("foundIt", message);
   })
 })
 
-function sendNewUserEmail(subject, data){
+function sendNewUserEmail(subject, data) {
   let mailOptions = {
-  from: 'nodeautonotifier@gmail.com',
-  to: 'nodeautonotifier@gmail.com',
-  subject: subject,
-  text: data
+    from: 'nodeautonotifier@gmail.com',
+    to: 'nodeautonotifier@gmail.com',
+    subject: subject,
+    text: data
   };
-  transporter.sendMail(mailOptions, function(error, info){
-  if (error) {
-    console.log(error);
-  } else {
-    console.log('Email sent: ' + info.response);
-  }
-});
+  transporter.sendMail(mailOptions, function(error, info) {
+    if (error) {
+      console.log(error);
+    } else {
+      console.log('Email sent: ' + info.response);
+    }
+  });
 }
 
 function shutdownServer() {
