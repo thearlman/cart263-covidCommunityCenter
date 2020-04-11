@@ -71,7 +71,8 @@ io.on("connect", function(socket) {
     //confirm reciept of display name with their socket id and display name
     socket.emit("yourId", {
       id: socket.id,
-      userName: users[socket.id].userName
+      userName: users[socket.id].userName,
+      userColor: users[socket.id].userColor
     });
     //once the client confirms they have recieved their id:
     socket.on("gotMyId", function() {

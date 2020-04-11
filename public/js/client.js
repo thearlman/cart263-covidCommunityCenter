@@ -118,7 +118,7 @@ clientSocket.on("yourId", function(user) {
   //create a new user avatar, with an ID === to current user's
   $("#communityWrapper").append(`<div class = "avatar" id = "${user.id}">
       <img src="corona.jpg" alt="avatar"/>
-      <p class = "userName">${user.userName}</p>
+      <p class = "userName" style = "color: ${user.userColor}">${user.userName}</p>
       </div>`);
   //add an event listener for the when the mouse is moved
   wrapper.addEventListener('mousemove', function() {
@@ -160,13 +160,15 @@ clientSocket.on("userUpdate", function(users) {
       //append an avatar with their id, and username to the environment
       $("#communityWrapper").append(`<div class = "avatar" id = "${Object.keys(users)[i]}">
           <img src="corona.jpg" alt="avatar"/>
-          <p class = "userName">${users[Object.keys(users)[i]].userName}</p>
+          <p class = "userName" style = "color: ${users[Object.keys(users)[i]].userColor}">${users[Object.keys(users)[i]].userName}</p>
           </div>`);
     }
   }
   //log it out cause I'm obsessed with logging
   console.log(currentUsers);
 
+  //below calculates number of users and creates string to inform them
+  //still working out how to best impliment this
   // if (Object.keys(currentUsers).length - 1 >= 2) {
   //   $("#messages").append(`<p>there are ${Object.keys(currentUsers).length - 1} other people here right now. say hi</p>`);
   // } else if (Object.keys(currentUsers).length - 1 === 1) {
@@ -233,69 +235,163 @@ $("#userMessage").keypress(function(e) {
   }
 });
 
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//~~~~~~~~Handle drawing events
+//~~~~~~~~Basic canvas drawing based on MDN example:
+//https://developer.mozilla.org/en-US/docs/Web/API/Element/mouseup_event
 
-// Add the event listeners for mousedown, mousemove, and mouseup
+// mousdown triggered only when on top of the canvas
 whiteboard.addEventListener('mousedown', e => {
+  //set x and y positions to the mouse position minus the position of the
+  //bounding box for the canvas context
   x = e.clientX - whiteboardBound.left;
   y = e.clientY - whiteboardBound.top;
+  //set drawing to true
   isDrawing = true;
 });
 
+//triggered when the mouse is moved over top of the canvas
 whiteboard.addEventListener('mousemove', e => {
+  //drawing set to true my mmousedown
   if (isDrawing === true) {
+    //send run the drawline function: last paprameter tells the function we want to emit
+    //to the server
     drawLine(context, x, y, e.clientX - whiteboardBound.left, e.clientY - whiteboardBound.top, true);
+    //update thr x and y coordinates
     x = e.clientX - whiteboardBound.left;
-
-    function sendMessage() {
-      if ($("#userMessage").val() !== "") {
-        clientSocket.emit("newChatMessage", $("#userMessage").val());
-        $("#userMessage").val("");
-      }
-    }
     y = e.clientY - whiteboardBound.top;
   }
 });
 
+//fired when the  mouse comes up anywhere on canvas, so long as drawing is still true
 window.addEventListener('mouseup', e => {
   if (isDrawing === true) {
+    //finish drawing the curren line
     drawLine(context, x, y, e.clientX - whiteboardBound.left, e.clientY - whiteboardBound.top, true);
+    //reset x and y
     x = 0;
     y = 0;
+    //set drawing back to false
     isDrawing = false;
+    //save the canvas data as base64
     let data = whiteboard.toDataURL();
+    //send it to server for saving
     clientSocket.emit("saveCanvas", data);
   }
 });
 
+//updates the canvas, either by local command, or remotely
+function drawLine(context, x1, y1, x2, y2, emit, remoteStrokeColor, remoteStrokeSize) {
+  //begin the path
+  context.beginPath();
+  //if function being being triggered by remote source, set the stroke color
+  //and size to the parameters passed
+  if (!emit) {
+    context.strokeStyle = remoteStrokeColor;
+    context.strokeSize = remoteStrokeSize;
+    //otherwise, use the current stroke color and size
+  } else {
+    context.strokeStyle = strokeColor;
+    context.lineWidth = strokeSize;
+  }
+  //move to the correct coordinates
+  context.moveTo(x1, y1);
+  //define the line
+  context.lineTo(x2, y2);
+  //execute stroke
+  context.stroke();
+  //close the path
+  context.closePath();
+  //if function triggered my remote source, exit function
+  if (!emit) {
+    return
+    //if function triggered by local source, tell server someone is drawing,
+    //and pass it the neccessary parameters as an obj
+  } else {
+    clientSocket.emit("drawing", {
+      x1: x1,
+      y1: y1,
+      x2: x2,
+      y2: y2,
+      remoteStrokeColor: strokeColor,
+      remoteStrokeSize: strokeSize
+    })
+  }
+}
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+//event triggered when other uder is drawing. Expects an object
+clientSocket.on("drawing", function(coords) {
+  //run the draw function, making sure to tell it that source is remote by setting emit to false
+  drawLine(context, coords.x1, coords.y1, coords.x2, coords.y2, false, coords.remoteStrokeColor, coords.remoteStrokeSize);
+})
+//event triggered when other user erases the drawing
+clientSocket.on("drawingErased", function() {
+  //clear the canvas
+  context.clearRect(0, 0, whiteboard.width, whiteboard.height);
+})
+
+//event triggered when user first comes into room. Expects valid .png data
 clientSocket.on("updateCanvas", function(canvasData) {
+  //if there is no data (should be possible, but maybe image was erased on server)
+  //then just exit function
   if (canvasData === null) {
     return;
   } else {
+    //otherwise create new image object
     let currentCanvas = new Image();
+    //define it's source as the data passed to function
+    currentCanvas.src = canvasData;
+    //when image object loads we clear the canvas, and draw the image object onto it
     currentCanvas.onload = function() {
       context.clearRect(0, 0, whiteboard.width, whiteboard.height);
       context.drawImage(currentCanvas, 0, 0);
     }
-    currentCanvas.src = canvasData;
   }
 })
 
-clientSocket.on("drawing", function(coords) {
-  drawLine(context, coords.x1, coords.y1, coords.x2, coords.y2, false, coords.remoteStrokeColor, coords.remoteStrokeSize);
-})
-
-clientSocket.on("drawingErased", function() {
-  context.clearRect(0, 0, whiteboard.width, whiteboard.height);
-})
-
-
+//socket.io included event fired when socket disconnects
 clientSocket.on("disconnect", function() {
+  //send user to page exaplining connection was lost
   document.location = "disconnect.html";
 })
 
+//same as above, but custom event sent from server for when somethign get's all
+//fucked up.
 clientSocket.on("connectionLost", function() {
   document.location = "disconnect.html";
 });
+
+//returns a formatted date
+function getDate() {
+  let date = new Date();
+  let day = date.getDate();
+  let month = date.getMonth();
+  let year = date.getFullYear();
+  let hours = date.getHours();
+  let minutes = date.getMinutes();
+  let seconds = date.getSeconds();
+  return `${day}/${month}/${year}-${hours}:${minutes}:${seconds}`
+}
+
+//Unused, and/or in-progress functions
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+function submitUserName() {
+  clientSocket.emit("newUser", {
+    userName: $("#userName").val(),
+    userColor: userColor
+  });
+  $("#userMessage").attr("placeholder", `Hello ${$("#userName").val()}, type to chat.`)
+  $("#loginWrapper").remove();
+}
+
+function sendMessage() {
+  if ($("#userMessage").val() !== "") {
+    clientSocket.emit("newChatMessage", $("#userMessage").val());
+    $("#userMessage").val("");
+  }
+}
 
 function tabFlash() {
   if (interact === false) {
@@ -312,53 +408,6 @@ function tabFlash() {
       }, 500)
     })
   }
-}
-
-function drawLine(context, x1, y1, x2, y2, emit, remoteStrokeColor, remoteStrokeSize) {
-  context.beginPath();
-  if (!emit) {
-    context.strokeStyle = remoteStrokeColor;
-    context.strokeSize = remoteStrokeSize;
-  } else {
-    context.strokeStyle = strokeColor;
-    context.lineWidth = strokeSize;
-  }
-  context.moveTo(x1, y1);
-  context.lineTo(x2, y2);
-  context.stroke();
-  context.closePath();
-  if (!emit) {
-    return
-  } else {
-    clientSocket.emit("drawing", {
-      x1: x1,
-      y1: y1,
-      x2: x2,
-      y2: y2,
-      remoteStrokeColor: strokeColor,
-      remoteStrokeSize: strokeSize
-    })
-  }
-}
-
-function submitUserName() {
-  clientSocket.emit("newUser", {
-    userName: $("#userName").val(),
-    userColor: userColor
-  });
-  $("#userMessage").attr("placeholder", `Hello ${$("#userName").val()}, type to chat.`)
-  $("#loginWrapper").remove();
-}
-
-function getDate() {
-  let date = new Date();
-  let day = date.getDate();
-  let month = date.getMonth();
-  let year = date.getFullYear();
-  let hours = date.getHours();
-  let minutes = date.getMinutes();
-  let seconds = date.getSeconds();
-  return `${day}/${month}/${year}-${hours}:${minutes}:${seconds}`
 }
 
 function updateChatlog() {
