@@ -230,7 +230,7 @@ function shutdownServer(time) {
     //set timeout for that number of seconds later
     setTimeout(() => {
       //redirect them to the lost connection page
-      socket.emit("connectionLost", null)
+      io.emit("connectionLost", null)
       //exit the server
       process.exit();
     }, time * 1000)
