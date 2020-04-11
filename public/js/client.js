@@ -1,28 +1,44 @@
+//define the client socket by trying to connect to server
 let clientSocket = io.connect()
+//define the potential user's signature color, as an rgb value in string format
 let userColor = `rgb(
   ${Math.floor(Math.random()*255)},
   ${Math.floor(Math.random()*255)},
   ${Math.floor(Math.random()*255)}
 )`;
-
+//define an undefined global ID for user
 let myId;
+//offset for the avatar
+let avatarOffset = 10;
+//define empty dictionary  to store users
 let currentUsers = {};
+//the main container (one inside body)
 let wrapper = document.getElementById("communityWrapper");
+//the whiteboard (html5 canvas)
+let whiteboard = document.getElementById('whiteboard');
+//context for the canvas
+let context = whiteboard.getContext('2d');
+//the bounding area (relative position on the page)
+let whiteboardBound = whiteboard.getBoundingClientRect();
+//boolean to check if the user is drawing on the whiteboard
+let isDrawing = false;
+//XnY foruser pen position
+let x = 0;
+let y = 0;
+//initial stroke color
+let strokeColor = 'rgb(0, 0, 0)';
+//initial stroke size
+let strokeSize = 10;
+
+//define some audio objs
 let messageSound = new Audio();
 messageSound.src = "messageSound.mp3";
 messageSound.volume = 0.2;
 let newUserSound = new Audio();
 newUserSound.src = "newUserSound.wav";
 newUserSound.volume = 0.2;
-let isDrawing = false;
-let whiteboard = document.getElementById('whiteboard');
-let context = whiteboard.getContext('2d');
-let whiteboardBound = whiteboard.getBoundingClientRect();
-let x = 0;
-let y = 0;
-let strokeColor = 'rgb(0, 0, 0)';
-let strokeSize = 10;
-
+//creeate a library for them, for easy playability on servers request.
+//u'll see...
 let soundLibrary = {
   "messageSound": () => {
     messageSound.play();
@@ -32,62 +48,87 @@ let soundLibrary = {
   }
 }
 
+//when the server sends its initial handshake, make
+//the login screen visible
+clientSocket.on("handshake", function(message) {
+  $("#login").css("visibility", "visible");
+  //log out confirmation from the server
+  console.log(message);
+})
 
+//if the user resizes the window, redefine where the canvas bounding area is
 window.onresize = function() {
   whiteboardBound = whiteboard.getBoundingClientRect();
 }
+//same thing if they scroll
 window.onscroll = function() {
   whiteboardBound = whiteboard.getBoundingClientRect();
 }
 
+//CLIC events:
+//when user clicks on one of the whiteboards colors,
+//tage it's background color and assign it to the global stroke color
+//also reset stroke size (for now)
 $(".whiteboardColorButton").on('click', function() {
   strokeColor = $(this).css("background-color");
   strokeSize = 10;
   // console.log($(this).css("background-color"));
 })
 
+//if user clicks eraser button, change stroke color to white,
+//and make stroke bigger for more eraser power =^=
 $("#eraserButton").on("click", function() {
   strokeColor = "rgb(255, 255, 255)"
   strokeSize = 20;
 })
+
+//if user clicks on trash button, tell the server
 $("#trashButton").on("click", function() {
-  // context.clearRect(0, 0, whiteboard.width, whiteboard.height);
-  clientSocket.emit("eraseDrawing", "haha");
+  clientSocket.emit("eraseDrawing", null);
 })
 
-clientSocket.on("handshake", (message) => {
-  $("#login").css("visibility", "visible");
-  console.log(message);
-})
+//if user clicks submit (orpressed enter) on the user name form
+$('#userNameForm').submit(function() {
+  //if the value field is not empty
+  if ($("#userName").val() !== "") {
+    //inform the server there is a new user, passing the value as thir username
+    clientSocket.emit("newUser", {
+      userName: $("#userName").val(),
+      userColor: userColor
+    });
+    //define the placeholder text of the chatroom field to be customized the username
+    $("#userMessage").attr("placeholder", `Hello ${$("#userName").val()}, type to chat.`);
+    //trash the login screen
+    $("#loginWrapper").remove();
+  }
+  //prevent from POSTing
+  return false;
+});
 
-let interact = false;
-
-clientSocket.on("newChatMessage", function(message) {
-
-  $("#messages").append(`
-      <p>(${getDate()}) <br/> <span style = "color: ${message.color}">${message.message}</span></p>`);
-  $("#messages").animate({
-    scrollTop: 1000000000000000000000
-  }, 50);
-  // document.title = "hello";
-  // tabFlash();
-})
-
-
+//event triggered when server sends client's unique id
 clientSocket.on("yourId", function(user) {
+  //set global id to unique id
   myId = user.id;
+  //add the id and the user name to the database
   currentUsers[user.id] = user.userName;
-  clientSocket.emit("gotMyId", "thankzzz");
+  //confirm to server the id was recieved
+  clientSocket.emit("gotMyId", null);
+  //log it out
   console.log(myId);
+  //create a new user avatar, with an ID === to current user's
   $("#communityWrapper").append(`<div class = "avatar" id = "${user.id}">
       <img src="corona.jpg" alt="avatar"/>
       <p class = "userName">${user.userName}</p>
       </div>`);
+  //add an event listener for the when the mouse is moved
   wrapper.addEventListener('mousemove', function() {
+    //move the avatar to the same place as the mouse, with an offset
     $(`#${user.id}`).css({
-      top: event.pageY + 10,
-      left: event.pageX + 10
+      top: event.pageY + avatarOffset,
+      left: event.pageX + avatarOffset
     })
+    //alert server that mouse has moved, passing it an object with the
+    //coordinates
     clientSocket.emit("mouseMoved", {
       x: event.pageX,
       y: event.pageY
@@ -95,27 +136,36 @@ clientSocket.on("yourId", function(user) {
   })
 })
 
+//event triggered when server detects mouse movement from other client(s)
+//expects an object
 clientSocket.on("mouseMoved", function(mouseInfo) {
+  //move the target avatar to the target position
   $(`#${mouseInfo.client}`).css({
-    top: mouseInfo.mousePosition.y + 10,
-    left: mouseInfo.mousePosition.x + 10
+    top: mouseInfo.mousePosition.y + avatarOffset,
+    left: mouseInfo.mousePosition.x + avatarOffset
   })
 })
 
+//event triggered when server detects new user: (expects an object)
 clientSocket.on("userUpdate", function(users) {
-  let objectKeys = Object.keys(currentUsers)
-  console.log(currentUsers);
+  //create an array of the keys in the current users
+  let currentUserKeys = Object.keys(currentUsers)
+  //for each of the keys in the object passed by the user
   for (let i = 0; i < Object.keys(users).length; i++) {
-    console.log(objectKeys.includes(Object.keys(users)[i]));
-    if (Object.keys(users)[i] !== myId && objectKeys.includes(Object.keys(users)[i]) === false) {
+    //check to see if the key in the corresponding position of the object passed by the server
+    //is not the same as our id, and is also not equal to the keys of any of current users
+    if (Object.keys(users)[i] !== myId && currentUserKeys.includes(Object.keys(users)[i]) === false) {
+      //add the unique id, and username to our current users object
       currentUsers[Object.keys(users)[i]] = users[Object.keys(users)[i]].userName;
-      console.log(Object.keys(users)[i]);
+      //append an avatar with their id, and username to the environment
       $("#communityWrapper").append(`<div class = "avatar" id = "${Object.keys(users)[i]}">
           <img src="corona.jpg" alt="avatar"/>
           <p class = "userName">${users[Object.keys(users)[i]].userName}</p>
           </div>`);
     }
   }
+  //log it out cause I'm obsessed with logging
+  console.log(currentUsers);
 
   // if (Object.keys(currentUsers).length - 1 >= 2) {
   //   $("#messages").append(`<p>there are ${Object.keys(currentUsers).length - 1} other people here right now. say hi</p>`);
@@ -126,21 +176,19 @@ clientSocket.on("userUpdate", function(users) {
   // }
 })
 
-
-
-clientSocket.on("maintenance", function() {
-  $("#communityWrapper").empty();
-
-  $("#communityWrapper").append(`<h1>SERVER WENT DOWN FOR MAINTINENANCE AT ${getDate()}</h1>`);
-})
-
+//event triggered when server requests an avatar be removed (user elaves room)
 clientSocket.on("removeAvatar", function(avatarId) {
+  //empty their wrapper
   $(`#${avatarId}`).empty();
+  //remove the shell
   $(`#${avatarId}`).remove();
+  //remove them from the database
   delete currentUsers[avatarId];
 })
 
+//event triggered when server calls an alert (usually for messages)
 clientSocket.on("alert", function(soundType) {
+  //grab the corresponding sound from the library, and run its function
   soundLibrary[soundType]();
 })
 
@@ -150,25 +198,39 @@ clientSocket.on("alert", function(soundType) {
 //   // }
 // })
 
+//when the sumit action for the message form (chatroom) is triggered
 $("#sendMessage").submit(function() {
-  sendMessage();
+  //if the value field is not empty
+  if ($("#userMessage").val() !== "") {
+    //tell the server there is a new message, passing the value as the body
+    clientSocket.emit("newChatMessage", $("#userMessage").val());
+    //empty out the value field
+    $("#userMessage").val("");
+  }
+  //prevent the page from trying to POST
   return false;
 })
 
-$("#userMessage").keypress(function(e) {
-  if (e.which == 13 && !e.shiftKey) {
-    $("sendMessage").submit();
-    sendMessage();
-    return false;
-    e.preventDefault();
-  }
-});
+//event triggered when server relays chat message. function expects an object
+clientSocket.on("newChatMessage", function(message) {
+  //append the message to the chatroom, adding the clients local date and time
+  $("#messages").append(`
+      <p>(${getDate()}) <br/> <span style = "color: ${message.color}">${message.message}</span></p>`);
+  //auto scroll down as messages come in <=BROKEN NEEDS FIXINGGGGG
+  $("#messages").animate({
+    scrollTop: 1000000000000000000000
+  }, 50);
+})
 
-$('#userNameForm').submit(function() {
-  if ($("#userName").val() !== "") {
-    submitUserName();
+//allow the user to press enter to send the message,
+$("#userMessage").keypress(function(e) {
+  //if the key is enter, and not also shift
+  if (e.which == 13 && !e.shiftKey) {
+    //force submit the button
+    $("#sendMessage").submit();
+    return false;
+    // e.preventDefault();
   }
-  return false;
 });
 
 
@@ -183,6 +245,13 @@ whiteboard.addEventListener('mousemove', e => {
   if (isDrawing === true) {
     drawLine(context, x, y, e.clientX - whiteboardBound.left, e.clientY - whiteboardBound.top, true);
     x = e.clientX - whiteboardBound.left;
+
+    function sendMessage() {
+      if ($("#userMessage").val() !== "") {
+        clientSocket.emit("newChatMessage", $("#userMessage").val());
+        $("#userMessage").val("");
+      }
+    }
     y = e.clientY - whiteboardBound.top;
   }
 });
@@ -200,7 +269,6 @@ window.addEventListener('mouseup', e => {
 
 clientSocket.on("updateCanvas", function(canvasData) {
   if (canvasData === null) {
-    console.log("No picture Saved!");
     return;
   } else {
     let currentCanvas = new Image();
@@ -221,7 +289,7 @@ clientSocket.on("drawingErased", function() {
 })
 
 
-clientSocket.on("disconnect", function(){
+clientSocket.on("disconnect", function() {
   document.location = "disconnect.html";
 })
 
@@ -280,13 +348,6 @@ function submitUserName() {
   });
   $("#userMessage").attr("placeholder", `Hello ${$("#userName").val()}, type to chat.`)
   $("#loginWrapper").remove();
-}
-
-function sendMessage() {
-  if ($("#userMessage").val() !== "") {
-    clientSocket.emit("newChatMessage", $("#userMessage").val());
-    $("#userMessage").val("");
-  }
 }
 
 function getDate() {
